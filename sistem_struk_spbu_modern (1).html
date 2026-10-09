@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Struk SPBU Custom</title>
+    
+    <!-- Tailwind CSS untuk UI Modern -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- html2canvas untuk fitur Save to JPG -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0fdf4;
+            background-image: radial-gradient(#dcfce7 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Styling khusus untuk Kertas Struk */
+        .receipt-container {
+            font-family: 'Courier New', Courier, monospace; /* Font khas struk */
+            background-color: #ffffff;
+            color: #000000;
+            width: 320px; /* Standar lebar proporsional di layar */
+            margin: 0 auto;
+            padding: 15px 15px 30px 15px;
+            font-size: 13px;
+            line-height: 1.2;
+            position: relative;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            /* Efek zig-zag potongan kertas di bawah */
+            background-image: 
+                linear-gradient(to right, transparent 50%, #ffffff 50%),
+                linear-gradient(to right, transparent 50%, #ffffff 50%);
+        }
+
+        .receipt-container::after {
+            content: "";
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 100%;
+            height: 10px;
+            background: radial-gradient(circle, transparent, transparent 50%, #ffffff 50%, #ffffff 100%) 0 100% / 10px 10px repeat-x;
+        }
+
+        .dashed-line {
+            border-top: 1px dashed #000;
+            margin: 6px 0;
+            width: 100%;
+        }
+
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .grid-row {
+            display: grid;
+            grid-template-columns: 140px 10px 1fr;
+            margin-bottom: 2px;
+        }
+
+        .grid-row-wide {
+            display: grid;
+            grid-template-columns: 160px 10px 1fr;
+            margin-bottom: 2px;
+        }
+
+        .text-right-receipt {
+            text-align: right;
+        }
+
+        .logo-pertamina {
+            max-width: 160px;
+            margin: 0 auto 10px auto;
+            display: block;
+            filter: grayscale(100%);
+        }
+
+        /* Custom Scrollbar untuk form */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* PRINT STYLES - KHUSUS PRINTER THERMAL */
+        @media print {
+            @page {
+                margin: 0;
+                /* Opsional: Tentukan ukuran kertas thermal jika disupport browser */
+                /* size: 80mm 200mm; */ 
+            }
+            body {
+                background: none;
+                margin: 0;
+                padding: 0;
+            }
+            /* Sembunyikan UI Web */
+            .no-print {
+                display: none !important;
+            }
+            /* Tampilkan hanya struk */
+            .print-area, .print-area * {
+                visibility: visible;
+            }
+            .print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                max-width: 80mm; /* Lebar standar printer thermal */
+                margin: 0;
+                padding: 5px;
+                box-shadow: none;
+            }
+            .receipt-container::after {
+                display: none; /* Hilangkan efek zig-zag saat diprint */
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex items-center justify-center">
+
+    <div class="max-w-7xl w-full bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden flex flex-col lg:flex-row border border-white">
+        
+        <!-- BAGIAN KIRI: Form Input Modern (NO PRINT) -->
+        <div class="w-full lg:w-7/12 p-6 lg:p-10 no-print border-r border-gray-100 flex flex-col h-[90vh]">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-800 bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-500">
+                    Sistem Struk SPBU
+                </h1>
+                <p class="text-gray-500 mt-2 text-sm">Masukkan data transaksi. Kalkulasi volume dan subsidi dilakukan secara otomatis.</p>
+            </div>
+            
+            <div class="overflow-y-auto custom-scrollbar pr-4 flex-grow">
+                <form id="spbuForm" class="space-y-8">
+                    
+                    <!-- Section: Info SPBU -->
+                    <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                        <h3 class="text-sm font-bold text-emerald-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                            Informasi SPBU
+                        </h3>
+                        
+                        <!-- Upload Logo Baru -->
+                        <div class="mb-5">
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Upload Logo SPBU</label>
+                            <input type="file" id="in_logo" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer border border-gray-200 rounded-xl p-1 bg-white shadow-sm transition-all focus:ring-2 focus:ring-emerald-500">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor SPBU</label>
+                                <input type="text" id="in_noSpbu" value="14287611" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Nama SPBU</label>
+                                <input type="text" id="in_namaSpbu" value="SPBU BAGAN BATU" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Alamat Lengkap</label>
+                                <input type="text" id="in_alamat" value="JL. LINTAS RIAU SUMUT KM.03 BA" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Detail Transaksi -->
+                    <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                        <h3 class="text-sm font-bold text-emerald-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            Data Transaksi
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Shift</label>
+                                <input type="text" id="in_shift" value="2" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">No. Transaksi</label>
+                                <input type="text" id="in_noTrans" value="3583454" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Waktu</label>
+                                <input type="text" id="in_waktu" value="07/10/2026 15:55:41" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Pulau/Pompa</label>
+                                <input type="text" id="in_pompa" value="3" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Operator</label>
+                                <input type="text" id="in_operator" value="YUSFITRIANTI" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Detail BBM & Harga -->
+                    <div class="bg-gray-50 p-5 rounded-2xl border border-gray-100">
+                        <h3 class="text-sm font-bold text-emerald-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            Kalkulasi BBM
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Jenis BBM</label>
+                                <select id="in_jenisBbm" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                                    <option value="PERTALITE">PERTALITE</option>
+                                    <option value="PERTAMAX">PERTAMAX</option>
+                                    <option value="PERTAMAX TURBO">PERTAMAX TURBO</option>
+                                    <option value="DEXLITE">DEXLITE</option>
+                                    <option value="PERTAMINA DEX">PERTAMINA DEX</option>
+                                    <option value="SOLAR">SOLAR</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Metode Pembayaran</label>
+                                <input type="text" id="in_payment" value="CASH" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Harga Non Subsidi (Rp/L)</label>
+                                <input type="number" id="in_hargaNonSubsidi" value="18101" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Harga Jual (Rp/L)</label>
+                                <input type="number" id="in_hargaJual" value="10000" class="w-full rounded-xl border-gray-200 bg-white shadow-sm border p-2.5 text-gray-800 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-gray-800 mb-1">Total Dibayar Konsumen (Rp)</label>
+                                <div class="relative">
+                                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">Rp</span>
+                                    <input type="number" id="in_totalDibayar" value="70000" class="w-full rounded-xl border-gray-300 bg-emerald-50 shadow-inner border p-3 pl-10 text-lg font-bold text-emerald-900 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all">
+                                </div>
+                                <p class="text-xs text-emerald-600 mt-2">*Volume liter akan dihitung otomatis berdasarkan Total Dibayar.</p>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="pt-6 mt-4 border-t border-gray-200 flex gap-3">
+                <button type="button" onclick="window.print()" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    Print Thermal
+                </button>
+                <button type="button" onclick="saveAsJPG()" class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Simpan JPG
+                </button>
+            </div>
+        </div>
+
+        <!-- BAGIAN KANAN: Live Preview -->
+        <div class="w-full lg:w-5/12 bg-gray-800 relative flex items-center justify-center p-8 overflow-y-auto min-h-[500px]">
+            <!-- Decorative background elements -->
+            <div class="absolute top-0 left-0 w-full h-full overflow-hidden no-print">
+                <div class="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl"></div>
+                <div class="absolute bottom-12 -left-12 w-48 h-48 rounded-full bg-teal-500/10 blur-3xl"></div>
+            </div>
+
+            <div class="absolute top-4 right-4 no-print">
+                <span class="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1.5 rounded-full border border-emerald-500/30 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    LIVE PREVIEW
+                </span>
+            </div>
+
+            <!-- AREA STRUK (Diprint) -->
+            <div id="receiptWrapper" class="print-area z-10 transform scale-100 lg:scale-105 origin-center transition-transform">
+                <div class="receipt-container" id="receiptContent">
+                    
+                    <!-- Logo SPBU (Dapat diubah) -->
+                    <img id="out_logoPertamina" src="https://placehold.co/400x100/transparent/000000?text=PERTAMINA" alt="Logo SPBU" class="logo-pertamina">
+
+                    <!-- Header -->
+                    <div style="text-align: center; margin-bottom: 5px;">
+                        <div id="out_noSpbu" style="font-weight: bold; font-size: 15px;">14287611</div>
+                        <div id="out_namaSpbu" style="font-weight: bold;">SPBU BAGAN BATU</div>
+                        <div id="out_alamat">JL. LINTAS RIAU SUMUT KM.03 BA</div>
+                    </div>
+
+                    <!-- Meta -->
+                    <div class="flex-between" style="margin-top: 10px;">
+                        <div>Shift: <span id="out_shift">2</span></div>
+                        <div>No. Trans: <span id="out_noTrans">3583454</span></div>
+                    </div>
+                    <div>Waktu: <span id="out_waktu">07/10/2026 15:55:41</span></div>
+
+                    <div class="dashed-line"></div>
+
+                    <!-- Detail Pembelian -->
+                    <div class="grid-row">
+                        <div>Pulau/Pompa</div><div>:</div><div id="out_pompa">3</div>
+                    </div>
+                    <div class="grid-row">
+                        <div>Operator</div><div>:</div><div id="out_operator">YUSFITRIANTI</div>
+                    </div>
+                    <div class="grid-row">
+                        <div>Jenis BBM</div><div>:</div><div id="out_jenisBbm">PERTALITE</div>
+                    </div>
+                    <div class="grid-row">
+                        <div>Volume</div><div>:</div><div><span id="out_volume">7.00</span> liter</div>
+                    </div>
+
+                    <div class="dashed-line"></div>
+
+                    <!-- Informasi Harga -->
+                    <div>Informasi Harga BBM (Rp/Liter)</div>
+                    <div class="grid-row-wide">
+                        <div>Harga Non Subsidi</div><div>:</div><div id="out_hargaNonSubsidi" class="text-right-receipt">18,101</div>
+                    </div>
+                    <div class="grid-row-wide">
+                        <div>Subsidi Pemerintah</div><div>:</div><div id="out_subsidiPerLiter" class="text-right-receipt">8,101</div>
+                    </div>
+                    <div class="grid-row-wide">
+                        <div>Harga Jual</div><div>:</div><div id="out_hargaJual" class="text-right-receipt">10,000</div>
+                    </div>
+
+                    <div class="dashed-line"></div>
+
+                    <!-- Total Penjualan -->
+                    <div>Total Penjualan (Rp)</div>
+                    <div class="grid-row-wide">
+                        <div>Tanpa Subsidi</div><div>:</div><div id="out_totalTanpaSubsidi" class="text-right-receipt">126,707</div>
+                    </div>
+                    <div class="grid-row-wide">
+                        <div>Subsidi Pemerintah</div><div>:</div><div id="out_totalSubsidi" class="text-right-receipt">56,707</div>
+                    </div>
+                    <div class="grid-row-wide">
+                        <div>Dibayar Konsumen</div><div>:</div><div id="out_dibayarKonsumen" class="text-right-receipt">70,000</div>
+                    </div>
+
+                    <div class="dashed-line"></div>
+
+                    <!-- Pembayaran Akhir -->
+                    <div class="flex-between" style="margin-top: 10px; margin-bottom: 10px;">
+                        <div id="out_payment">CASH</div>
+                        <div id="out_totalFinal" style="text-align: right; font-size: 15px;">70,000</div>
+                    </div>
+
+                    <div class="dashed-line"></div>
+
+                    <!-- Footer Wording -->
+                    <div style="text-align: center; margin-top: 15px; font-size: 11px;">
+                        Anda mendapat subsidi dari<br>
+                        Pemerintah sebesar Rp <span id="out_footerSubsidi">56,707</span><br>
+                        (Perhitungan Subsidi Unaudited<br>
+                        atau Estimasi). Gunakan BBM<br>
+                        Subsidi secara bijak.
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Utilities Formatting
+        const formatNum = (num) => {
+            return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        };
+        const formatDec = (num) => parseFloat(num).toFixed(2);
+
+        // Core Calculation & UI Update Logic
+        function updateReceipt() {
+            // 1. Text Fields Update
+            const textFields = [
+                'noSpbu', 'namaSpbu', 'alamat', 'shift', 'noTrans', 
+                'waktu', 'pompa', 'operator', 'jenisBbm', 'payment'
+            ];
+            
+            textFields.forEach(field => {
+                const inputVal = document.getElementById(`in_${field}`).value;
+                document.getElementById(`out_${field}`).innerText = inputVal;
+            });
+
+            // 2. Number Parsing
+            const hargaNonSubsidi = parseFloat(document.getElementById('in_hargaNonSubsidi').value) || 0;
+            const hargaJual = parseFloat(document.getElementById('in_hargaJual').value) || 0;
+            const totalDibayar = parseFloat(document.getElementById('in_totalDibayar').value) || 0;
+
+            // 3. Auto-Calculate Volume & Subsidies
+            let volume = 0;
+            if (hargaJual > 0) {
+                volume = totalDibayar / hargaJual;
+            }
+            
+            const subsidiPerLiter = hargaNonSubsidi - hargaJual;
+            const totalTanpaSubsidi = volume * hargaNonSubsidi;
+            const totalSubsidi = totalTanpaSubsidi - totalDibayar;
+
+            // 4. Update UI DOM
+            document.getElementById('out_volume').innerText = formatDec(volume);
+            document.getElementById('out_hargaNonSubsidi').innerText = formatNum(hargaNonSubsidi);
+            document.getElementById('out_hargaJual').innerText = formatNum(hargaJual);
+            document.getElementById('out_subsidiPerLiter').innerText = formatNum(Math.max(0, subsidiPerLiter));
+            
+            document.getElementById('out_totalTanpaSubsidi').innerText = formatNum(totalTanpaSubsidi);
+            document.getElementById('out_totalSubsidi').innerText = formatNum(Math.max(0, totalSubsidi));
+            document.getElementById('out_dibayarKonsumen').innerText = formatNum(totalDibayar);
+            
+            document.getElementById('out_totalFinal').innerText = formatNum(totalDibayar);
+            document.getElementById('out_footerSubsidi').innerText = formatNum(Math.max(0, totalSubsidi));
+        }
+
+        // Attach Event Listeners to all inputs
+        const allInputs = document.querySelectorAll('#spbuForm input:not([type="file"]), #spbuForm select');
+        allInputs.forEach(input => {
+            input.addEventListener('input', updateReceipt);
+            input.addEventListener('change', updateReceipt);
+        });
+
+        // Fitur Upload Logo SPBU
+        document.getElementById('in_logo').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    // Ganti source gambar pada struk dengan gambar yang diunggah
+                    document.getElementById('out_logoPertamina').src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Fitur Simpan sebagai JPG menggunakan html2canvas
+        function saveAsJPG() {
+            const receiptNode = document.getElementById('receiptContent');
+            
+            // Simpan state styling aslinya
+            const originalBoxShadow = receiptNode.style.boxShadow;
+            
+            // Hapus shadow sementara agar hasil render bersih
+            receiptNode.style.boxShadow = 'none';
+
+            html2canvas(receiptNode, {
+                scale: 3, // Skala resolusi tinggi untuk gambar
+                useCORS: true,
+                backgroundColor: "#ffffff"
+            }).then(canvas => {
+                // Kembalikan styling asli
+                receiptNode.style.boxShadow = originalBoxShadow;
+
+                // Proses Download
+                const imgData = canvas.toDataURL('image/jpeg', 1.0);
+                const a = document.createElement('a');
+                a.href = imgData;
+                
+                // Buat nama file berdasarkan no Transaksi dan waktu
+                const trans = document.getElementById('in_noTrans').value;
+                a.download = `Struk_SPBU_${trans}.jpg`;
+                
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }).catch(err => {
+                console.error("Gagal merender gambar: ", err);
+                alert("Terjadi kesalahan saat menyimpan gambar.");
+            });
+        }
+
+        // Inisialisasi awal saat load
+        window.onload = () => {
+            updateReceipt();
+        }
+    </script>
+</body>
+</html>
