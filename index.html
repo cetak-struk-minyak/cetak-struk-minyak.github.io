@@ -3,400 +3,343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generator Struk SPBU Custom</title>
+    <title>Sistem Generator Struk SPBU</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=VT323&display=swap');
         
-        body {
-            background-color: #f3f4f6;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        /* Styling Khusus Kertas Thermal */
+        body { background-color: #f3f4f6; font-family: sans-serif; }
+        
+        /* Spesifikasi Visual Kertas Thermal */
         .thermal-paper {
-            background-color: #f7f7f7; /* Warna khas kertas struk */
+            background-color: #f7f7f7;
             color: #111;
             font-family: 'VT323', monospace;
-            width: 320px;
+            width: 300px; /* Ukuran default layar */
             margin: 0 auto;
-            padding: 20px 15px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            position: relative;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             text-transform: uppercase;
-            font-size: 18px;
+            font-size: 17px;
             line-height: 1.2;
-            border-left: 1px solid #ddd;
-            border-right: 1px solid #ddd;
-            /* Efek potongan kertas di bagian bawah dan atas */
-            background-image: linear-gradient(transparent 50%, rgba(255,255,255,.5) 50%);
-            background-size: 100% 4px;
+            border: 1px solid #ddd;
+            transition: width 0.3s ease; /* Transisi halus saat ganti ukuran */
         }
-
-        .thermal-paper::after {
-            content: "";
-            position: absolute;
-            bottom: -10px;
-            left: 0;
-            width: 100%;
-            height: 10px;
-            background: linear-gradient(-45deg, transparent 33.33%, #f7f7f7 33.33%, #f7f7f7 66.66%, transparent 66.66%),
-                        linear-gradient(45deg, transparent 33.33%, #f7f7f7 33.33%, #f7f7f7 66.66%, transparent 66.66%);
-            background-size: 10px 20px;
-        }
-
-        .divider {
-            border-bottom: 2px dashed #111;
-            margin: 10px 0;
-        }
-
-        .flex-between {
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .text-center {
-            text-align: center;
-        }
-
-        .logo-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-
-        .logo-container img {
-            max-width: 140px;
-            filter: grayscale(100%) contrast(1.2);
-            mix-blend-mode: multiply;
-        }
+        .divider { border-bottom: 2px dashed #111; margin: 8px 0; }
+        .flex-between { display: flex; justify-content: space-between; }
+        .text-center { text-align: center; }
         
-        /* Hilangkan elemen input saat diprint */
+        .logo-container { display: flex; justify-content: center; margin-bottom: 5px; }
+        .logo-container img { max-width: 130px; filter: grayscale(100%) contrast(1.2); mix-blend-mode: multiply; }
+
+        /* Optimasi Khusus Printer Thermal */
         @media print {
-            body * {
-                visibility: hidden;
+            @page {
+                margin: 0; /* Hilangkan margin default browser */
             }
-            #print-area, #print-area * {
-                visibility: visible;
+            body { 
+                margin: 0; 
+                padding: 0; 
+                background-color: white; 
             }
-            #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                box-shadow: none;
-                margin: 0;
-            }
-            .thermal-paper {
-                width: 100%;
-                max-width: 80mm; /* Standar printer thermal */
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                box-shadow: none; 
+                border: none; 
+                padding: 0; /* Biarkan printer yang mengatur padding tepi */
             }
         }
     </style>
 </head>
-<body class="text-gray-800 p-4 md:p-8">
+<body class="p-6">
 
-    <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+    
+    <!-- Panel Kontrol Input -->
+    <div class="bg-white p-5 rounded shadow">
+        <h2 class="text-xl font-bold mb-4 text-gray-800 border-b pb-2">Kontrol Data Struk</h2>
         
-        <!-- Panel Form Input (Kiri) -->
-        <div class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
-            <h2 class="text-2xl font-bold mb-6 text-blue-700 border-b pb-2">🛠️ Pengaturan Struk SPBU</h2>
+        <form id="mainForm" oninput="updatePreview()" onchange="updatePreview()">
             
-            <form id="strukForm" class="space-y-5">
-                
-                <!-- Section: Informasi SPBU -->
-                <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                    <h3 class="font-semibold text-blue-800 mb-3">Informasi SPBU</h3>
-                    
-                    <div class="mb-3">
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Metode Input</label>
-                        <div class="flex gap-4">
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="inputMethod" value="select" class="form-radio text-blue-600" checked onchange="toggleInputMethod()">
-                                <span class="ml-2">Pilih dari Daftar</span>
-                            </label>
-                            <label class="inline-flex items-center">
-                                <input type="radio" name="inputMethod" value="manual" class="form-radio text-blue-600" onchange="toggleInputMethod()">
-                                <span class="ml-2">Isi Manual</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    <!-- Dropdown Mode -->
-                    <div id="mode-select" class="mb-3">
-                        <label class="block text-gray-700 text-sm font-bold mb-1">Pilih Lokasi SPBU</label>
-                        <select id="spbu-dropdown" class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="updatePreview()">
-                            <!-- Diisi oleh Javascript -->
-                        </select>
-                    </div>
-
-                    <!-- Manual Mode -->
-                    <div id="mode-manual" class="hidden space-y-3">
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Nomor SPBU</label>
-                            <input type="text" id="manual-nospbu" class="w-full px-3 py-2 border rounded-md" value="14287611" oninput="updatePreview()">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Nama SPBU</label>
-                            <input type="text" id="manual-namaspbu" class="w-full px-3 py-2 border rounded-md" value="SPBU BAGAN BATU" oninput="updatePreview()">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Alamat SPBU</label>
-                            <input type="text" id="manual-alamatspbu" class="w-full px-3 py-2 border rounded-md" value="JL. LINTAS RIAU SUMUT KM.03 BA" oninput="updatePreview()">
-                        </div>
-                    </div>
+            <!-- Pengaturan Kertas Thermal & Logo -->
+            <div class="grid grid-cols-2 gap-4 mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+                <div>
+                    <label class="block text-sm font-bold mb-1">Ukuran Thermal</label>
+                    <select id="inPaperSize" class="w-full p-2 border rounded text-sm" onchange="updatePaperSize()">
+                        <option value="300px">Default (300px)</option>
+                        <option value="58mm">Kertas 58mm</option>
+                        <option value="80mm">Kertas 80mm</option>
+                    </select>
                 </div>
-
-                <!-- Section: Detail Transaksi -->
-                <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <h3 class="font-semibold text-gray-800 mb-3">Detail Transaksi</h3>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Shift</label>
-                            <input type="text" id="shift" class="w-full px-3 py-2 border rounded-md" value="2" oninput="updatePreview()">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-1">No. Transaksi</label>
-                            <input type="text" id="notrans" class="w-full px-3 py-2 border rounded-md" value="3583454" oninput="updatePreview()">
-                        </div>
-                        <div class="col-span-2">
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Waktu (Tanggal & Jam)</label>
-                            <input type="datetime-local" id="waktu" class="w-full px-3 py-2 border rounded-md" onchange="updatePreview()">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Pulau/Pompa</label>
-                            <input type="text" id="pompa" class="w-full px-3 py-2 border rounded-md" value="3" oninput="updatePreview()">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Operator</label>
-                            <input type="text" id="operator" class="w-full px-3 py-2 border rounded-md" value="YUSFITRIANTI" oninput="updatePreview()">
-                        </div>
-                    </div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Ganti Logo</label>
+                    <input type="file" id="logoUpload" accept="image/*" class="w-full text-xs border p-1" onchange="handleLogoUpload(event)">
                 </div>
-
-                <!-- Section: Detail BBM -->
-                <div class="p-4 bg-green-50 rounded-lg border border-green-100">
-                    <h3 class="font-semibold text-green-800 mb-3">Rincian Pembelian</h3>
-                    <div class="mb-3">
-                        <label class="block text-gray-700 text-sm font-bold mb-1">Jenis BBM</label>
-                        <select id="jenisbbm" class="w-full px-3 py-2 border rounded-md" onchange="updatePrices()">
-                            <option value="PERTALITE">Pertalite</option>
-                            <option value="PERTAMAX">Pertamax</option>
-                            <option value="BIOSOLAR">Bio Solar</option>
-                            <option value="DEXLITE">Dexlite</option>
-                        </select>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Volume (Liter)</label>
-                            <input type="number" id="volume" step="0.01" class="w-full px-3 py-2 border rounded-md" value="7.00" oninput="calculateTotal()">
-                        </div>
-                        <div>
-                            <label class="block text-gray-700 text-sm font-bold mb-1">Total Bayar (Rp)</label>
-                            <input type="text" id="totalBayarInput" class="w-full px-3 py-2 border rounded-md bg-gray-100 cursor-not-allowed" readonly>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-3 text-xs text-gray-500 italic">
-                        *Harga, Subsidi, dan Total Bayar akan dihitung otomatis berdasarkan Volume liter.
-                    </div>
-                </div>
-            </form>
-        </div>
-
-        <!-- Panel Preview Struk (Kanan) -->
-        <div class="flex flex-col items-center">
-            <div class="w-full flex justify-between mb-4">
-                <button onclick="cetakStruk()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                    Cetak Printer Thermal
-                </button>
-                <button onclick="simpanJPG()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded flex items-center gap-2 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                    Simpan JPG
-                </button>
             </div>
 
-            <!-- KERTAS STRUK THERMAL -->
-            <div id="print-area" class="thermal-paper">
-                <div class="logo-container">
-                    <img src="pertamina-seeklogo.png" alt="Logo Pertamina" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Logo_Pertamina.svg/512px-Logo_Pertamina.svg.png'">
+            <!-- SPBU Section -->
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded mb-4">
+                <label class="block text-sm font-bold mb-1">Lokasi SPBU (Data Regional)</label>
+                <select id="spbuSelect" class="w-full p-2 border rounded mb-2">
+                    <option value='{"no":"14287611","name":"SPBU BAGAN BATU","address":"JL. LINTAS RIAU SUMUT KM.03 BA"}'>Bagan Batu - 14287611</option>
+                    <option value='{"no":"13289011","name":"SPBU KOTA BAGAN BATU","address":"JL. JEND. SUDIRMAN BAGAN BATU"}'>Bagan Batu - 13289011</option>
+                    <option value='{"no":"14214235","name":"SPBU SIMPANG MANGGA","address":"JL. HM. SAID, RANTAUPRAPAT"}'>Labuhanbatu - 14214235</option>
+                    <option value='{"no":"14214218","name":"SPBU AEK KANOPAN","address":"JL. JEND. SUDIRMAN, AEK KANOPAN"}'>Labura - 14214218</option>
+                    <option value='{"no":"14214215","name":"SPBU KOTA PINANG","address":"JL. LINTAS SUMATERA KOTA PINANG"}'>Labusel - 14214215</option>
+                    <option value='{"no":"14214237","name":"SPBU CIKAMPAK","address":"JL. LINTAS SUMATERA CIKAMPAK"}'>Cikampak - 14214237</option>
+                    <option value='{"no":"14227311","name":"SPBU GUNUNG TUA","address":"JL. LINTAS GUNUNG TUA"}'>Gunung Tua - 14227311</option>
+                    <option value='{"no":"14227315","name":"SPBU SIBUHUAN","address":"JL. KIHAJAR DEWANTARA SIBUHUAN"}'>Sibuhuan - 14227315</option>
+                </select>
+                <input type="text" id="inNoSpbu" class="w-full p-2 border rounded mt-2 text-sm" placeholder="Nomor SPBU">
+                <input type="text" id="inNamaSpbu" class="w-full p-2 border rounded mt-2 text-sm" placeholder="Nama SPBU">
+                <input type="text" id="inAlamatSpbu" class="w-full p-2 border rounded mt-2 text-sm" placeholder="Alamat SPBU">
+            </div>
+
+            <!-- Transaksi Section -->
+            <div class="grid grid-cols-2 gap-2 mb-4">
+                <div>
+                    <label class="block text-sm font-bold mb-1">Waktu Transaksi</label>
+                    <input type="datetime-local" id="inWaktu" class="w-full p-2 border rounded text-sm">
                 </div>
-                
-                <div class="text-center font-bold">
-                    <div id="out-nospbu">14287611</div>
-                    <div id="out-namaspbu">SPBU BAGAN BATU</div>
-                    <div id="out-alamatspbu">JL. LINTAS RIAU SUMUT KM.03 BA</div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">No. Transaksi</label>
+                    <input type="text" id="inNoTrans" class="w-full p-2 border rounded text-sm" value="3583454">
                 </div>
-                
-                <div class="flex-between mt-2">
-                    <div>Shift: <span id="out-shift">2</span></div>
-                    <div>No. Trans: <span id="out-notrans">3583454</span></div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Shift</label>
+                    <input type="text" id="inShift" class="w-full p-2 border rounded text-sm" value="2">
                 </div>
-                <div>Waktu: <span id="out-waktu">07/10/2026 15:55:41</span></div>
-                
-                <div class="divider"></div>
-                
-                <div class="flex" style="gap:10px;">
-                    <div style="width: 100px;">Pulau/Pompa</div><div>: <span id="out-pompa">3</span></div>
+                <div>
+                    <label class="block text-sm font-bold mb-1">Pompa</label>
+                    <input type="text" id="inPompa" class="w-full p-2 border rounded text-sm" value="3">
                 </div>
-                <div class="flex" style="gap:10px;">
-                    <div style="width: 100px;">Operator</div><div>: <span id="out-operator">YUSFITRIANTI</span></div>
+                <div class="col-span-2">
+                    <label class="block text-sm font-bold mb-1">Operator</label>
+                    <input type="text" id="inOperator" class="w-full p-2 border rounded text-sm" value="YUSFITRIANTI">
                 </div>
-                <div class="flex" style="gap:10px;">
-                    <div style="width: 100px;">Jenis BBM</div><div>: <span id="out-jenisbbm">PERTALITE</span></div>
+            </div>
+
+            <!-- BBM & Harga Section (Real-Time & Editable) -->
+            <div class="p-3 bg-green-50 border border-green-200 rounded">
+                <label class="block text-sm font-bold mb-1">Jenis BBM</label>
+                <select id="inJenisBbm" class="w-full p-2 border rounded mb-2" onchange="setBbmTemplate()">
+                    <option value="PERTALITE">PERTALITE</option>
+                    <option value="BIOSOLAR">BIOSOLAR</option>
+                    <option value="PERTAMAX">PERTAMAX</option>
+                    <option value="DEXLITE">DEXLITE</option>
+                </select>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-sm font-bold mb-1">Harga Jual (Rp/L)</label>
+                        <input type="number" id="inHargaJual" class="w-full p-2 border rounded text-sm" value="10000">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold mb-1">Harga Non-Sub (Rp/L)</label>
+                        <input type="number" id="inHargaNonSub" class="w-full p-2 border rounded text-sm" value="18101">
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-sm font-bold mb-1">Volume Beli (Liter)</label>
+                        <input type="number" id="inVolume" step="0.01" class="w-full p-2 border rounded font-bold text-lg text-blue-600" value="7.00">
+                    </div>
                 </div>
-                <div class="flex" style="gap:10px;">
-                    <div style="width: 100px;">Volume</div><div>: <span id="out-volume">7.00</span> liter</div>
-                </div>
-                
-                <div class="divider"></div>
-                
-                <div>Informasi Harga BBM (Rp/Liter)</div>
-                <div class="flex-between">
-                    <div>Harga Non Subsidi</div><div>: <span id="out-harganonsub">18,101</span></div>
-                </div>
-                <div class="flex-between" id="row-subsidi-liter">
-                    <div>Subsidi Pemerintah</div><div>: <span id="out-subsidiliter">8,101</span></div>
-                </div>
-                <div class="flex-between">
-                    <div>Harga Jual</div><div>: <span id="out-hargajual">10,000</span></div>
-                </div>
-                
-                <div class="divider"></div>
-                
-                <div>Total Penjualan (Rp)</div>
-                <div class="flex-between">
-                    <div>Tanpa Subsidi</div><div>: <span id="out-totaltanpasub">126,707</span></div>
-                </div>
-                <div class="flex-between" id="row-subsidi-total">
-                    <div>Subsidi Pemerintah</div><div>: <span id="out-totalsubsidi">56,707</span></div>
-                </div>
-                <div class="flex-between">
-                    <div>Dibayar Konsumen</div><div>: <span id="out-totaldibayar">70,000</span></div>
-                </div>
-                
-                <div class="divider"></div>
-                
-                <div class="flex-between">
-                    <div>CASH</div>
-                </div>
-                <div class="text-right font-bold text-xl mt-1">
-                    <span id="out-cash">70,000</span>
-                </div>
-                
-                <div id="footer-subsidi" class="text-center mt-4 text-[16px] leading-tight px-2">
-                    Anda mendapat subsidi dari<br>
-                    Pemerintah sebesar Rp <span id="out-footersubsidi">56,707</span><br>
-                    (Perhitungan Subsidi Unaudited<br>
-                    atau Estimasi). Gunakan BBM<br>
-                    Subsidi secara bijak.
-                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Panel Render Struk -->
+    <div class="flex flex-col items-center">
+        <div class="flex gap-2 mb-4 w-full justify-center">
+            <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded shadow-md transition-all">🖨️ Cetak Printer</button>
+            <button onclick="downloadJPG()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded shadow-md transition-all">💾 Simpan JPG</button>
+        </div>
+
+        <!-- KERTAS THERMAL -->
+        <div id="print-area" class="thermal-paper">
+            <div class="logo-container">
+                <img id="outLogo" src="Pertamina.jpg" alt="PERTAMINA" style="min-height: 40px;">
+            </div>
+            
+            <div class="text-center font-bold">
+                <div id="outNoSpbu">14287611</div>
+                <div id="outNamaSpbu">SPBU BAGAN BATU</div>
+                <div id="outAlamatSpbu">JL. LINTAS RIAU SUMUT KM.03 BA</div>
+            </div>
+            
+            <div class="flex-between mt-1">
+                <div>Shift: <span id="outShift">2</span></div>
+                <div>No. Trans: <span id="outNoTrans">3583454</span></div>
+            </div>
+            <div>Waktu: <span id="outWaktu">07/10/2026 15:55:41</span></div>
+            
+            <div class="divider"></div>
+            
+            <div class="flex-between"><span>Pulau/Pompa</span><span>: <span id="outPompa">3</span></span></div>
+            <div class="flex-between"><span>Operator</span><span>: <span id="outOperator">YUSFITRIANTI</span></span></div>
+            <div class="flex-between"><span>Jenis BBM</span><span>: <span id="outJenisBbm">PERTALITE</span></span></div>
+            <div class="flex-between"><span>Volume</span><span>: <span id="outVolume">7.00</span> liter</span></div>
+            
+            <div class="divider"></div>
+            
+            <div>Informasi Harga BBM (Rp/Liter)</div>
+            <div class="flex-between"><span>Harga Non Subsidi</span><span>: <span id="outHargaNonSubL">18,101</span></span></div>
+            <div class="flex-between" id="rowSubL"><span>Subsidi Pemerintah</span><span>: <span id="outSubL">8,101</span></span></div>
+            <div class="flex-between"><span>Harga Jual</span><span>: <span id="outHargaJualL">10,000</span></span></div>
+            
+            <div class="divider"></div>
+            
+            <div>Total Penjualan (Rp)</div>
+            <div class="flex-between"><span>Tanpa Subsidi</span><span>: <span id="outTotalTanpaSub">126,707</span></span></div>
+            <div class="flex-between" id="rowSubTotal"><span>Subsidi Pemerintah</span><span>: <span id="outTotalSub">56,707</span></span></div>
+            <div class="flex-between"><span>Dibayar Konsumen</span><span>: <span id="outDibayar">70,000</span></span></div>
+            
+            <div class="divider"></div>
+            
+            <div class="flex-between"><span>CASH</span></div>
+            <div class="text-right font-bold text-xl mt-1"><span id="outCash">70,000</span></div>
+            
+            <div id="outPesanSubsidi" class="text-center mt-3 text-sm px-1">
+                Anda mendapat subsidi dari<br>Pemerintah sebesar Rp <span id="outSubText">56,707</span><br>(Perhitungan Subsidi Unaudited<br>atau Estimasi). Gunakan BBM<br>Subsidi secara bijak.
             </div>
         </div>
     </div>
 
-    <script>
-        // Database Dummy SPBU Berdasarkan Regional
-        const dataSPBU = {
-            "Labuhanbatu (Rantauprapat)": [
-                { no: "14214235", name: "SPBU SIMPANG MANGGA", address: "JL. HM. SAID, RANTAUPRAPAT" },
-                { no: "14214280", name: "SPBU JALINSUM RANTAUPRAPAT", address: "JL. LINTAS SUMATERA, RANTAUPRAPAT" },
-                { no: "14214214", name: "SPBU PUSAT KOTA", address: "JL. JEND. AHMAD YANI, RANTAUPRAPAT" }
-            ],
-            "Labuhanbatu Utara": [
-                { no: "14214218", name: "SPBU AEK KANOPAN", address: "JL. JEND. SUDIRMAN, AEK KANOPAN" },
-                { no: "14214253", name: "SPBU DAMULI", address: "JL. LINTAS SUMATERA DAMULI" }
-            ],
-            "Labuhanbatu Selatan": [
-                { no: "14214215", name: "SPBU KOTA PINANG", address: "JL. LINTAS SUMATERA KOTA PINANG" },
-                { no: "14214267", name: "SPBU AEK NABARA", address: "JL. LINTAS SUMATERA, AEK NABARA" }
-            ],
-            "Cikampak": [
-                { no: "14214237", name: "SPBU CIKAMPAK", address: "JL. LINTAS SUMATERA CIKAMPAK" }
-            ],
-            "Bagan Batu": [
-                { no: "14287611", name: "SPBU BAGAN BATU", address: "JL. LINTAS RIAU SUMUT KM.03 BA" },
-                { no: "13289011", name: "SPBU KOTA BAGAN BATU", address: "JL. JEND. SUDIRMAN BAGAN BATU" }
-            ],
-            "Gunung Tua": [
-                { no: "14227311", name: "SPBU GUNUNG TUA", address: "JL. LINTAS GUNUNG TUA" }
-            ],
-            "Sibuhuan": [
-                { no: "14227315", name: "SPBU SIBUHUAN", address: "JL. KIHAJAR DEWANTARA SIBUHUAN" }
-            ]
-        };
+</div>
 
-        // Konfigurasi Harga BBM
-        const hargaBBM = {
-            "PERTALITE": { hargaJual: 10000, hargaNonSub: 18101, isSubsidi: true },
-            "BIOSOLAR": { hargaJual: 6800, hargaNonSub: 16500, isSubsidi: true },
-            "PERTAMAX": { hargaJual: 12950, hargaNonSub: 12950, isSubsidi: false },
-            "DEXLITE": { hargaJual: 14550, hargaNonSub: 14550, isSubsidi: false }
-        };
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('inWaktu').value = now.toISOString().slice(0, 16);
+        handleSpbuSelect();
+        updatePreview();
+    });
 
-        // Initialize Data SPBU ke Dropdown
-        function initSPBUDropdown() {
-            const select = document.getElementById('spbu-dropdown');
-            select.innerHTML = '';
-            
-            for (const region in dataSPBU) {
-                const optgroup = document.createElement('optgroup');
-                optgroup.label = region;
+    // FUNGSI BARU: Mengubah ukuran layout sesuai standar printer thermal
+    function updatePaperSize() {
+        const size = document.getElementById('inPaperSize').value;
+        const printArea = document.getElementById('print-area');
+        printArea.style.width = size;
+        
+        // Optimasi font size untuk ukuran kecil agar tidak berantakan
+        if (size === '58mm') {
+            printArea.style.fontSize = '14px';
+        } else {
+            printArea.style.fontSize = '17px';
+        }
+    }
+
+    document.getElementById('spbuSelect').addEventListener('change', handleSpbuSelect);
+
+    function handleSpbuSelect() {
+        const spbuData = JSON.parse(document.getElementById('spbuSelect').value);
+        document.getElementById('inNoSpbu').value = spbuData.no;
+        document.getElementById('inNamaSpbu').value = spbuData.name;
+        document.getElementById('inAlamatSpbu').value = spbuData.address;
+        updatePreview();
+    }
+
+    function setBbmTemplate() {
+        const jenis = document.getElementById('inJenisBbm').value;
+        const inputJual = document.getElementById('inHargaJual');
+        const inputNonSub = document.getElementById('inHargaNonSub');
+
+        if (jenis === "PERTALITE") { inputJual.value = 10000; inputNonSub.value = 18101; }
+        else if (jenis === "BIOSOLAR") { inputJual.value = 6800; inputNonSub.value = 16500; }
+        else if (jenis === "PERTAMAX") { inputJual.value = 12950; inputNonSub.value = 12950; }
+        else if (jenis === "DEXLITE") { inputJual.value = 14550; inputNonSub.value = 14550; }
+        
+        updatePreview();
+    }
+
+    function formatTanggal(isoString) {
+        if (!isoString) return "";
+        const d = new Date(isoString);
+        const pad = n => n.toString().padStart(2, '0');
+        return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function formatRp(num) {
+        return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function updatePreview() {
+        document.getElementById('outNoSpbu').innerText = document.getElementById('inNoSpbu').value;
+        document.getElementById('outNamaSpbu').innerText = document.getElementById('inNamaSpbu').value.toUpperCase();
+        document.getElementById('outAlamatSpbu').innerText = document.getElementById('inAlamatSpbu').value.toUpperCase();
+        
+        document.getElementById('outShift').innerText = document.getElementById('inShift').value;
+        document.getElementById('outNoTrans').innerText = document.getElementById('inNoTrans').value;
+        document.getElementById('outWaktu').innerText = formatTanggal(document.getElementById('inWaktu').value);
+        document.getElementById('outPompa').innerText = document.getElementById('inPompa').value;
+        document.getElementById('outOperator').innerText = document.getElementById('inOperator').value.toUpperCase();
+        
+        const jenisBbm = document.getElementById('inJenisBbm').value;
+        const vol = parseFloat(document.getElementById('inVolume').value) || 0;
+        const hargaJual = parseFloat(document.getElementById('inHargaJual').value) || 0;
+        const hargaNonSub = parseFloat(document.getElementById('inHargaNonSub').value) || 0;
+        
+        document.getElementById('outJenisBbm').innerText = jenisBbm;
+        document.getElementById('outVolume').innerText = vol.toFixed(2);
+        
+        const subsidiPerLiter = Math.max(0, hargaNonSub - hargaJual);
+        const totalTanpaSub = vol * hargaNonSub;
+        const totalSubsidi = vol * subsidiPerLiter;
+        const totalDibayar = vol * hargaJual;
+
+        document.getElementById('outHargaNonSubL').innerText = formatRp(hargaNonSub);
+        document.getElementById('outHargaJualL').innerText = formatRp(hargaJual);
+        document.getElementById('outTotalTanpaSub').innerText = formatRp(totalTanpaSub);
+        document.getElementById('outDibayar').innerText = formatRp(totalDibayar);
+        document.getElementById('outCash').innerText = formatRp(totalDibayar);
+
+        const isSubsidi = subsidiPerLiter > 0;
+        document.getElementById('rowSubL').style.display = isSubsidi ? 'flex' : 'none';
+        document.getElementById('rowSubTotal').style.display = isSubsidi ? 'flex' : 'none';
+        document.getElementById('outPesanSubsidi').style.display = isSubsidi ? 'block' : 'none';
+        
+        if (isSubsidi) {
+            document.getElementById('outSubL').innerText = formatRp(subsidiPerLiter);
+            document.getElementById('outTotalSub').innerText = formatRp(totalSubsidi);
+            document.getElementById('outSubText').innerText = formatRp(totalSubsidi);
+        }
+    }
+
+    function handleLogoUpload(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('outLogo').src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function downloadJPG() {
+        const element = document.getElementById('print-area');
+        // Reset ukuran sementara agar kualitas gambar konsisten (ukuran default besar)
+        const currentSize = element.style.width;
+        element.style.width = '300px'; 
+        element.style.fontSize = '17px';
+        
+        setTimeout(() => {
+            html2canvas(element, { scale: 2, backgroundColor: "#f7f7f7" }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'Struk_SPBU_' + document.getElementById('inNoTrans').value + '.jpg';
+                link.href = canvas.toDataURL('image/jpeg', 1.0);
+                link.click();
                 
-                dataSPBU[region].forEach(spbu => {
-                    const option = document.createElement('option');
-                    // Simpan data sebagai string JSON di value
-                    option.value = JSON.stringify(spbu);
-                    option.text = `${spbu.no} - ${spbu.name}`;
-                    optgroup.appendChild(option);
-                });
-                select.appendChild(optgroup);
-            }
-        }
-
-        // Toggle Input Mode (Select vs Manual)
-        function toggleInputMethod() {
-            const method = document.querySelector('input[name="inputMethod"]:checked').value;
-            const modeSelect = document.getElementById('mode-select');
-            const modeManual = document.getElementById('mode-manual');
-
-            if (method === 'select') {
-                modeSelect.classList.remove('hidden');
-                modeManual.classList.add('hidden');
-            } else {
-                modeSelect.classList.add('hidden');
-                modeManual.classList.remove('hidden');
-            }
-            updatePreview();
-        }
-
-        // Format angka dengan koma pemisah ribuan
-        function formatNumber(num) {
-            return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-        }
-
-        // Set Default Waktu (Sekarang) format input datetime-local
-        function setDefaultTime() {
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            const localDatetime = now.toISOString().slice(0,16);
-            document.getElementById('waktu').value = localDatetime;
-        }
-
-        // Format Date ke Struk (DD/MM/YYYY HH:MM:SS)
-        function formatWaktuStruk(datetimeLocalVal) {
-            if(!datetimeLocalVal) return "";
-            const d = new Date(datetimeLocalVal);
-            const pad = (n) => n.toString().padStart(2, '0');
-            return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-        }
-
-        function updatePrices() {
-            calculateTotal();
-        }
-
-        function calculateTotal() {
-            const jenis = document.getElementById('jenisbbm').value;
-            const vol = parseFloat(document.getElementById('volume').
+                // Kembalikan ukuran setelah dirender
+                updatePaperSize();
+            });
+        }, 100);
+    }
+</script>
+</body>
+                </html>
